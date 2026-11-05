@@ -1,0 +1,1044 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>You're the Expert</title>
+<meta name="description" content="Outline an event in a short imaging movie by hand, then compare your outline and trace with PURsuit's.">
+<link rel="icon" href="data:,">
+<!--
+  SfN 2026 poster QR page (2026-11-06). One file; the movie and PURsuit's outline come from clip.json next to it,
+  written by atp/make_roi_game_clip_20261106.py. Flow: play / pause / zoom the movie -> Draw (one finger is a pen,
+  Redraw is the only edit) -> Submit -> PURsuit's outline appears and the Compare tab unlocks: Dice of the two masks,
+  Pearson r of the two hull-mean traces, peak dF/F0. Open with #autotest to run the flow on a fixed ellipse.
+-->
+<style>
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #e8edf1;
+  --ink: #1a222a;
+  --muted: #5a6773;
+  --line: #d9e0e6;
+  --pur: #357fa8;
+  --you: #d4701a;
+  --pur-soft: rgba(53, 127, 168, 0.12);
+  --viewer: #0b0f13;
+  --shadow: 0 1px 2px rgba(20, 30, 40, 0.08), 0 2px 8px rgba(20, 30, 40, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1317;
+    --surface: #161d23;
+    --surface-2: #1d262d;
+    --ink: #e4ebf0;
+    --muted: #97a5b1;
+    --line: #2a353e;
+    --pur: #5eaedb;
+    --you: #f09a4c;
+    --pur-soft: rgba(94, 174, 219, 0.14);
+    --viewer: #05080a;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1317;
+  --surface: #161d23;
+  --surface-2: #1d262d;
+  --ink: #e4ebf0;
+  --muted: #97a5b1;
+  --line: #2a353e;
+  --pur: #5eaedb;
+  --you: #f09a4c;
+  --pur-soft: rgba(94, 174, 219, 0.14);
+  --viewer: #05080a;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+button { font: inherit; color: inherit; touch-action: manipulation; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--pur); outline-offset: 2px; }
+.wrap {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 14px 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+/* header */
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--pur);
+}
+h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; text-wrap: balance; }
+.lead { margin: 0; color: var(--muted); font-size: 15.5px; }
+.flag {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* tabs */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 12px 0 10px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 650;
+}
+.tab[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.tab.locked { opacity: 0.6; }
+.lock { width: 17px; height: 17px; overflow: visible; }
+.lock .shackle { transform-box: view-box; transform-origin: 16px 10px; }
+.tab.unlocking .shackle { animation: shackle 0.55s ease-out forwards; }
+.tab.unlocking .lock { animation: lockout 0.35s ease-in 0.6s forwards; }
+.tab.unlocked .lock { display: none; }
+.tab.unlocked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  box-shadow: 0 0 0 2px var(--pur);
+  animation: pulse 1.1s ease-out 2;
+  opacity: 0;
+}
+.tab.shake { animation: shake 0.4s; }
+@keyframes shackle {
+  0% { transform: none; }
+  45% { transform: translateY(-3px); }
+  100% { transform: translateY(-3px) rotate(38deg); }
+}
+@keyframes lockout { to { opacity: 0; transform: scale(0.4); } }
+@keyframes pulse { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.08); } }
+@keyframes shake {
+  20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+
+/* outline panel; the movie shrinks on short screens so Draw / Submit stay in view */
+.viewer {
+  position: relative;
+  width: 100%;
+  max-width: 54vh;
+  max-width: 54svh;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--viewer);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.viewer canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.viewer.pen canvas { cursor: crosshair; }
+.viewer.pen { box-shadow: inset 0 0 0 3px #ffad5c; }
+.hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.zoom {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  gap: 1px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.18);
+}
+.zoom button {
+  width: 38px;
+  height: 36px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 19px;
+  line-height: 1;
+}
+.zoom button.fit { font-size: 12px; font-weight: 650; }
+.penbadge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #ffad5c;
+  color: #2a1606;
+  font-size: 12.5px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #c9d3db;
+  font-size: 14.5px;
+  text-align: center;
+}
+.transport { display: flex; align-items: center; gap: 10px; margin: 8px 0 10px; }
+.play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+}
+.play svg { width: 18px; height: 18px; fill: var(--ink); }
+.transport input { flex: 1; min-width: 0; accent-color: var(--pur); height: 30px; }
+.clock { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hint { min-height: 3em; margin: 10px 0 0; color: var(--muted); font-size: 14.5px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn {
+  min-height: 50px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 650;
+}
+.btn.primary { border-color: transparent; background: var(--pur); color: #fff; }
+.btn.pen-on { border-color: transparent; background: var(--you); color: #fff; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.after { display: grid; gap: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 14px; color: var(--muted); }
+.key { display: inline-block; width: 18px; height: 0; margin-right: 6px; border-top: 3px solid; vertical-align: middle; }
+.key.you { border-color: var(--you); }
+.key.pur { border-color: var(--pur); }
+
+/* compare panel */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.stat .top { display: flex; align-items: center; gap: 10px; }
+.ring { width: 54px; height: 54px; flex: none; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 7; }
+.ring .bg { stroke: var(--surface-2); }
+.ring .fg { stroke: var(--pur); stroke-linecap: round; transition: stroke-dashoffset 1s ease-out; }
+.num { font-size: 30px; font-weight: 750; line-height: 1; font-variant-numeric: tabular-nums; }
+.lbl { margin-top: 3px; font-size: 13px; font-weight: 650; }
+.stat p { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.verdict { margin: 14px 0; font-size: 16px; }
+.card {
+  margin: 0 0 12px;
+  padding: 12px 12px 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.card h2 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+.card .legend { margin-bottom: 2px; }
+.chart { display: block; width: 100%; height: auto; }
+.chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { stroke: var(--muted); stroke-width: 1; }
+.chart .win { fill: var(--pur-soft); }
+.chart .lp { fill: none; stroke: var(--pur); stroke-width: 2; stroke-linejoin: round; }
+.chart .lu { fill: none; stroke: var(--you); stroke-width: 2; stroke-linejoin: round; }
+.peaks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 2px 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.peaks b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.still { display: block; width: 100%; border-radius: 10px; margin: 6px 0 8px; background: var(--viewer); }
+.note { margin: 4px 0 14px; color: var(--muted); font-size: 13.5px; }
+.again { width: 100%; }
+footer { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+footer p { margin: 0; }
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tab.unlocking .shackle, .tab.unlocking .lock, .tab.unlocked::after, .tab.shake { animation: none; }
+  .ring .fg { transition: none; }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <p class="eyebrow">PURsuit · SfN 2026</p>
+    <h1>You’re the expert</h1>
+    <p class="lead">Outline the event by hand, then see how PURsuit’s outline compares with yours.</p>
+    <p class="flag" id="flag" hidden>Demo with synthetic data, not a recording</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Steps">
+    <button class="tab" role="tab" id="tabOutline" aria-selected="true" aria-controls="panelOutline">Outline</button>
+    <button class="tab locked" role="tab" id="tabCompare" aria-selected="false" aria-controls="panelCompare"
+            aria-disabled="true">
+      <svg class="lock" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="shackle" d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round"/>
+        <rect x="4.5" y="10" width="15" height="11" rx="2.5" fill="currentColor"/>
+      </svg>
+      <span>Compare</span>
+    </button>
+  </nav>
+
+  <section id="panelOutline" role="tabpanel" aria-labelledby="tabOutline">
+    <div class="viewer" id="viewer">
+      <canvas id="cv" role="img" aria-label="Imaging movie. Pinch or use the plus and minus buttons to zoom; with the pen on, draw an outline with one finger."></canvas>
+      <div class="hud" id="hud" hidden></div>
+      <div class="zoom" id="zoom" hidden>
+        <button type="button" id="zin" aria-label="Zoom in">+</button>
+        <button type="button" id="zout" aria-label="Zoom out">−</button>
+        <button type="button" id="zfit" class="fit" aria-label="Fit whole view">fit</button>
+      </div>
+      <div class="penbadge" id="penbadge" hidden>Pen on</div>
+      <div class="loading" id="loading">Loading movie…</div>
+    </div>
+    <div class="transport">
+      <button type="button" class="play" id="play" aria-label="Play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path id="playIcon" d="M7 4.5v15l12.5-7.5z"/></svg>
+      </button>
+      <input type="range" id="scrub" min="0" max="0" value="0" step="1" aria-label="Position in the movie">
+      <span class="clock" id="clock">0:00 / 0:00</span>
+    </div>
+    <div class="actions" id="actions">
+      <button type="button" class="btn primary" id="draw" aria-pressed="false">Draw</button>
+      <button type="button" class="btn" id="submit" disabled>Submit</button>
+    </div>
+    <div class="after" id="after" hidden>
+      <div class="legend"><span><span class="key you"></span>Your outline</span><span><span class="key pur"></span>PURsuit’s outline</span></div>
+      <button type="button" class="btn primary" id="goCompare">See the comparison</button>
+    </div>
+    <p class="hint" id="hint" aria-live="polite">Press play. Pause when you see a flash, then pinch or tap + to zoom in.</p>
+  </section>
+
+  <section id="panelCompare" role="tabpanel" aria-labelledby="tabCompare" hidden>
+    <div class="stats">
+      <div class="stat">
+        <div class="top">
+          <svg class="ring" viewBox="0 0 60 60" aria-hidden="true"><circle class="bg" cx="30" cy="30" r="25"/><circle class="fg" id="ringDice" cx="30" cy="30" r="25"/></svg>
+          <div><div class="num" id="dice">–</div><div class="lbl">Dice</div></div>
+        </div>
+        <p>How much the two outlines overlap: 0 not at all, 1 identical.</p>
+      </div>
+      <div class="stat">
+        <div class="top">
+          <svg class="ring" viewBox="0 0 60 60" aria-hidden="true"><circle class="bg" cx="30" cy="30" r="25"/><circle class="fg" id="ringR" cx="30" cy="30" r="25"/></svg>
+          <div><div class="num" id="rval">–</div><div class="lbl">Pearson r</div></div>
+        </div>
+        <p>How alike the two traces are in shape: 1 identical.</p>
+      </div>
+    </div>
+    <p class="verdict" id="verdict"></p>
+    <div class="card">
+      <h2>Traces from the two outlines</h2>
+      <div class="legend"><span><span class="key you"></span>Yours</span><span><span class="key pur"></span>PURsuit’s</span></div>
+      <svg class="chart" id="chart" viewBox="0 0 340 200" role="img" aria-label="The two traces over time"></svg>
+      <div class="peaks">Peak ΔF/F₀: <span>yours <b id="pkU">–</b></span><span>PURsuit’s <b id="pkP">–</b></span></div>
+    </div>
+    <div class="card">
+      <h2>Both outlines at the event’s peak</h2>
+      <canvas class="still" id="still" role="img" aria-label="Movie frame at the event's peak with both outlines"></canvas>
+    </div>
+    <p class="note">PURsuit’s outline is not ground truth either: these numbers show how closely you and the software agree.</p>
+    <button type="button" class="btn again" id="again">Try again</button>
+  </section>
+
+  <footer><p id="caption"></p></footer>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const YOU_V = '#ffad5c', PUR_V = '#63b9ea';        // outline colours on the dark movie
+  const ZMAX = 10;
+
+  const st = {
+    clip: null, frames: null, W: 0, H: 0, T: 0, N: 0,
+    frame: 0, playing: false, acc: 0, last: 0,
+    pen: false, stroke: null, outline: null, submitted: false, unlocked: false,
+    reveal: 0, revealT0: 0,
+    z: 1, ox: 0, oy: 0, fit: 1, cssW: 0, cssH: 0, dpr: 1,
+    pointers: new Map(), pinch: null, pan: null,
+    needs: true, frameDirty: true, res: null, shown: false,
+  };
+  if (location.hash === '#debug') window.__st = st;   // for the touch test only
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  let off, offCtx, offImg;
+
+  // ── loading ───────────────────────────────────────────────────────────
+  function b64bytes(b64) {
+    const bin = atob(b64), out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  async function load() {
+    let clip;
+    try {
+      const res = await fetch('clip.json', { cache: 'no-cache' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      clip = await res.json();
+    } catch (e) {
+      $('loading').textContent = 'Could not load the movie (clip.json). If you opened this file directly, serve the folder instead, e.g. python -m http.server.';
+      return;
+    }
+    init(clip);
+  }
+
+  function init(clip) {
+    st.clip = clip;
+    st.W = clip.width; st.H = clip.height; st.T = clip.n_frames; st.N = st.W * st.H;
+    st.frames = b64bytes(clip.frames_b64);
+    if (st.frames.length !== st.N * st.T) {
+      $('loading').textContent = 'The movie file is incomplete.';
+      return;
+    }
+    st.pMask = b64bytes(clip.pursuit.mask_b64);
+    st.pHull = clip.pursuit.hull.map(([x, y]) => [x + 0.5, y + 0.5]);   // pixel centres
+    off = document.createElement('canvas');
+    off.width = st.W; off.height = st.H;
+    offCtx = off.getContext('2d');
+    offImg = offCtx.createImageData(st.W, st.H);
+
+    $('viewer').style.aspectRatio = st.W + ' / ' + st.H;
+    $('scrub').max = String(st.T - 1);
+    $('flag').hidden = !clip.synthetic;
+    const speed = Math.round(clip.fps * clip.frame_s);
+    $('caption').textContent = (clip.caption || '') + (speed > 1 ? ' The movie plays at ' + speed + '× speed.' : '');
+    $('loading').hidden = true;
+    $('hud').hidden = false;
+    $('zoom').hidden = false;
+    resize();
+    setFrame(0);
+    window.addEventListener('resize', resize);
+    requestAnimationFrame(tick);
+    if (location.hash.startsWith('#autotest')) autotest(location.hash === '#autotest-outline');
+  }
+
+  // ── frames ────────────────────────────────────────────────────────────
+  // display = sliding mean over `smooth` frames centred on t, mapped lo..hi -> 0..255
+  function paintFrame(t, img, c2) {
+    const { N, T, frames } = st;
+    const k = Math.max(1, st.clip.smooth | 0);
+    const a = Math.max(0, Math.min(T - k, t - ((k - 1) >> 1)));
+    const b = Math.min(T - 1, a + k - 1), cnt = b - a + 1;
+    const acc = new Uint16Array(N);
+    for (let f = a; f <= b; f++) {
+      const base = f * N;
+      for (let i = 0; i < N; i++) acc[i] += frames[base + i];
+    }
+    const lo = st.clip.display.lo * cnt, sc = 255 / ((st.clip.display.hi - st.clip.display.lo) * cnt);
+    const d = img.data;
+    for (let i = 0, j = 0; i < N; i++, j += 4) {
+      let v = (acc[i] - lo) * sc;
+      v = v < 0 ? 0 : v > 255 ? 255 : v;
+      d[j] = d[j + 1] = d[j + 2] = v;
+      d[j + 3] = 255;
+    }
+    c2.putImageData(img, 0, 0);
+  }
+
+  function fmt(s) {
+    s = Math.max(0, Math.round(s));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  function setFrame(t, fromScrub) {
+    st.frame = t;
+    st.frameDirty = true;
+    st.needs = true;
+    if (!fromScrub) $('scrub').value = String(t);
+    const c = st.clip;
+    $('clock').textContent = fmt(t / c.fps) + ' / ' + fmt(st.T / c.fps);
+    $('hud').textContent = 'Recording ' + fmt(c.t0_s + t * c.frame_s);
+  }
+
+  function setPlaying(on) {
+    st.playing = on;
+    st.acc = 0;
+    $('play').setAttribute('aria-label', on ? 'Pause' : 'Play');
+    $('playIcon').setAttribute('d', on ? 'M6 4.5h4v15H6zM14 4.5h4v15h-4z' : 'M7 4.5v15l12.5-7.5z');
+  }
+
+  function tick(now) {
+    if (st.playing) {
+      const dt = st.last ? Math.min(0.25, (now - st.last) / 1000) : 0;
+      st.acc += dt;
+      const step = 1 / st.clip.fps;
+      let adv = 0;
+      while (st.acc >= step) { st.acc -= step; adv++; }
+      if (adv) setFrame((st.frame + adv) % st.T);
+    }
+    st.last = now;
+    if (st.submitted && st.reveal < 1) {
+      st.reveal = reduceMotion ? 1 : Math.min(1, (now - st.revealT0) / 1100);
+      st.needs = true;
+    }
+    if (st.needs) { render(); st.needs = false; }
+    requestAnimationFrame(tick);
+  }
+
+  // ── view ──────────────────────────────────────────────────────────────
+  function resize() {
+    const r = $('viewer').getBoundingClientRect();
+    const ratio = st.cssW ? r.width / st.cssW : 1;
+    st.cssW = r.width; st.cssH = r.height;
+    st.dpr = Math.min(window.devicePixelRatio || 1, 3);
+    cv.width = Math.round(r.width * st.dpr);
+    cv.height = Math.round(r.height * st.dpr);
+    st.fit = r.width / st.W;
+    st.ox *= ratio; st.oy *= ratio;
+    clampView();
+    st.needs = true;
+  }
+
+  function clampView() {
+    const s = st.fit * st.z;
+    st.ox = Math.min(0, Math.max(st.cssW - st.W * s, st.ox));
+    st.oy = Math.min(0, Math.max(st.cssH - st.H * s, st.oy));
+  }
+
+  function zoomAt(px, py, factor) {
+    const z1 = Math.min(ZMAX, Math.max(1, st.z * factor));
+    const s0 = st.fit * st.z, s1 = st.fit * z1;
+    const ix = (px - st.ox) / s0, iy = (py - st.oy) / s0;
+    st.z = z1;
+    st.ox = px - ix * s1; st.oy = py - iy * s1;
+    clampView();
+    st.needs = true;
+  }
+
+  function toImage(p) {
+    const s = st.fit * st.z;
+    return [Math.min(st.W, Math.max(0, (p.x - st.ox) / s)), Math.min(st.H, Math.max(0, (p.y - st.oy) / s))];
+  }
+
+  function pathOn(c, pts, s, ox, oy, closed, frac) {
+    let n = pts.length;
+    if (n < 2) return false;
+    c.beginPath();
+    c.moveTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
+    if (frac >= 1) {
+      for (let i = 1; i < n; i++) c.lineTo(ox + pts[i][0] * s, oy + pts[i][1] * s);
+      if (closed) c.closePath();
+      return true;
+    }
+    const ring = closed ? pts.concat([pts[0]]) : pts;      // partial path for the reveal
+    let total = 0;
+    for (let i = 1; i < ring.length; i++) total += Math.hypot(ring[i][0] - ring[i - 1][0], ring[i][1] - ring[i - 1][1]);
+    let left = total * frac;
+    for (let i = 1; i < ring.length && left > 0; i++) {
+      const [x0, y0] = ring[i - 1], [x1, y1] = ring[i];
+      const L = Math.hypot(x1 - x0, y1 - y0);
+      const u = L > left ? left / L : 1;
+      c.lineTo(ox + (x0 + (x1 - x0) * u) * s, oy + (y0 + (y1 - y0) * u) * s);
+      left -= L;
+    }
+    return true;
+  }
+
+  function drawOutlines(c, s, ox, oy, lw) {
+    if (st.submitted && st.reveal > 0) {
+      if (pathOn(c, st.pHull, s, ox, oy, true, st.reveal)) {
+        c.strokeStyle = PUR_V; c.lineWidth = lw; c.stroke();
+      }
+    }
+    if (st.outline && pathOn(c, st.outline, s, ox, oy, true, 1)) {
+      c.fillStyle = 'rgba(255, 173, 92, 0.13)'; c.fill('evenodd');
+      c.strokeStyle = YOU_V; c.lineWidth = lw; c.stroke();
+    }
+  }
+
+  function render() {
+    if (st.frameDirty) { paintFrame(st.frame, offImg, offCtx); st.frameDirty = false; }
+    ctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0);
+    ctx.fillStyle = '#05080a';
+    ctx.fillRect(0, 0, st.cssW, st.cssH);
+    const s = st.fit * st.z;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(off, st.ox, st.oy, st.W * s, st.H * s);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    drawOutlines(ctx, s, st.ox, st.oy, 2.5);
+    if (st.stroke && pathOn(ctx, st.stroke, s, st.ox, st.oy, false, 1)) {
+      ctx.strokeStyle = YOU_V; ctx.lineWidth = 2.5; ctx.stroke();
+      const a = st.stroke[0], b = st.stroke[st.stroke.length - 1];   // where the loop will close
+      ctx.setLineDash([4, 5]);
+      ctx.beginPath();
+      ctx.moveTo(st.ox + b[0] * s, st.oy + b[1] * s);
+      ctx.lineTo(st.ox + a[0] * s, st.oy + a[1] * s);
+      ctx.strokeStyle = 'rgba(255, 173, 92, 0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // ── gestures: one finger pans (or draws with the pen on), two fingers pinch ──
+  function local(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function startPinch() {
+    const [a, b] = [...st.pointers.values()];
+    st.pinch = { d: Math.hypot(b.x - a.x, b.y - a.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
+                 z: st.z, ox: st.ox, oy: st.oy };
+  }
+
+  function movePinch() {
+    const [a, b] = [...st.pointers.values()];
+    const p = st.pinch;
+    const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const z1 = Math.min(ZMAX, Math.max(1, p.z * d / p.d));
+    const s0 = st.fit * p.z, s1 = st.fit * z1;
+    const ix = (p.mx - p.ox) / s0, iy = (p.my - p.oy) / s0;
+    st.z = z1;
+    st.ox = mx - ix * s1; st.oy = my - iy * s1;
+    clampView();
+  }
+
+  cv.addEventListener('pointerdown', (e) => {
+    if (!st.clip) return;
+    e.preventDefault();
+    try { cv.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
+    const p = local(e);
+    st.pointers.set(e.pointerId, p);
+    if (st.pointers.size === 2) {
+      if (st.stroke) { st.stroke = null; hint('Two fingers zoom. Draw with one finger.'); }
+      st.pan = null;
+      startPinch();
+    } else if (st.pointers.size === 1) {
+      if (st.pen && !st.outline && !st.submitted) {
+        setPlaying(false);
+        st.stroke = [toImage(p)];
+      } else {
+        st.pan = { x: p.x, y: p.y, ox: st.ox, oy: st.oy };
+      }
+    }
+    st.needs = true;
+  });
+
+  cv.addEventListener('pointermove', (e) => {
+    if (!st.pointers.has(e.pointerId)) return;
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+    const p = local(e);
+    st.pointers.set(e.pointerId, p);
+    if (st.pinch && st.pointers.size >= 2) {
+      movePinch();
+    } else if (st.stroke) {
+      const s = st.fit * st.z;
+      for (const ev of (evs.length ? evs : [e])) {
+        const q = toImage(local(ev)), last = st.stroke[st.stroke.length - 1];
+        if (Math.hypot(q[0] - last[0], q[1] - last[1]) * s >= 2) st.stroke.push(q);
+      }
+    } else if (st.pan) {
+      st.ox = st.pan.ox + p.x - st.pan.x;
+      st.oy = st.pan.oy + p.y - st.pan.y;
+      clampView();
+    }
+    st.needs = true;
+  });
+
+  function pointerEnd(e, cancelled) {
+    if (!st.pointers.has(e.pointerId)) return;
+    st.pointers.delete(e.pointerId);
+    if (st.stroke && st.pointers.size === 0) {
+      if (cancelled) st.stroke = null; else finishStroke();
+    }
+    if (st.pointers.size < 2) st.pinch = null;
+    if (st.pointers.size === 1 && !st.stroke) {
+      const [p] = [...st.pointers.values()];
+      st.pan = { x: p.x, y: p.y, ox: st.ox, oy: st.oy };
+    } else if (st.pointers.size === 0) {
+      st.pan = null;
+    }
+    st.needs = true;
+  }
+  cv.addEventListener('pointerup', (e) => pointerEnd(e, false));
+  cv.addEventListener('pointercancel', (e) => pointerEnd(e, true));
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  cv.addEventListener('wheel', (e) => {
+    if (!st.clip) return;
+    e.preventDefault();
+    const p = local(e);
+    zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
+  }, { passive: false });
+
+  function polyArea(pts) {
+    let a = 0;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) a += (pts[j][0] + pts[i][0]) * (pts[j][1] - pts[i][1]);
+    return Math.abs(a / 2);
+  }
+
+  function finishStroke() {
+    const pts = st.stroke;
+    st.stroke = null;
+    if (pts.length < 6 || polyArea(pts) < 3) {
+      hint('That was too small. Draw one loop around the whole event.');
+      return;
+    }
+    st.outline = pts;
+    st.pen = false;
+    ui();
+    hint('Happy with it? Tap Submit. Redraw starts the outline again.');
+  }
+
+  // ── buttons ───────────────────────────────────────────────────────────
+  function hint(s) { $('hint').textContent = s; }
+
+  function ui() {
+    const d = $('draw');
+    d.textContent = st.outline ? 'Redraw' : st.pen ? 'Pen on · tap to stop' : 'Draw';
+    d.setAttribute('aria-pressed', String(st.pen));
+    d.classList.toggle('pen-on', st.pen);
+    d.classList.toggle('primary', !st.pen && !st.outline);
+    const sb = $('submit');
+    sb.disabled = !st.outline;
+    sb.classList.toggle('primary', !!st.outline);
+    $('viewer').classList.toggle('pen', st.pen);
+    $('penbadge').hidden = !st.pen;
+    $('actions').hidden = st.submitted;
+    $('after').hidden = !st.submitted;
+    st.needs = true;
+  }
+
+  $('play').addEventListener('click', () => { if (st.clip) setPlaying(!st.playing); });
+  $('scrub').addEventListener('input', (e) => { if (st.clip) setFrame(+e.target.value, true); });
+  $('zin').addEventListener('click', () => zoomAt(st.cssW / 2, st.cssH / 2, 1.6));
+  $('zout').addEventListener('click', () => zoomAt(st.cssW / 2, st.cssH / 2, 1 / 1.6));
+  $('zfit').addEventListener('click', () => { st.z = 1; st.ox = 0; st.oy = 0; st.needs = true; });
+
+  $('draw').addEventListener('click', () => {
+    if (!st.clip || st.submitted) return;
+    if (st.outline) {                       // Redraw: the only edit
+      st.outline = null;
+      st.pen = true;
+      hint('Pen on: draw one loop around the event with one finger. Two fingers still zoom.');
+    } else {
+      st.pen = !st.pen;
+      hint(st.pen ? 'Pen on: draw one loop around the event with one finger. Two fingers still zoom.'
+                  : 'Pen off: one finger moves the view again. Tap Draw when you are ready.');
+    }
+    if (st.pen) setPlaying(false);
+    ui();
+  });
+
+  $('submit').addEventListener('click', () => {
+    if (!st.outline || st.submitted) return;
+    st.submitted = true;
+    st.pen = false;
+    st.res = compare();
+    setPlaying(false);
+    setFrame(st.clip.pursuit.peak);
+    st.reveal = 0;
+    st.revealT0 = performance.now();
+    ui();
+    hint('Blue is PURsuit’s outline. Scrub the movie to look again, then open Compare.');
+    setTimeout(unlock, reduceMotion ? 0 : 1000);
+  });
+
+  $('goCompare').addEventListener('click', () => showTab('compare'));
+  $('again').addEventListener('click', reset);
+
+  // ── tabs ──────────────────────────────────────────────────────────────
+  const tabO = $('tabOutline'), tabC = $('tabCompare');
+
+  function unlock() {
+    st.unlocked = true;
+    tabC.classList.remove('locked', 'shake');
+    tabC.setAttribute('aria-disabled', 'false');
+    if (reduceMotion) { tabC.classList.add('unlocked'); return; }
+    tabC.classList.add('unlocking');
+    if (navigator.vibrate) { try { navigator.vibrate(25); } catch (_) { /* not allowed */ } }
+    setTimeout(() => { tabC.classList.remove('unlocking'); tabC.classList.add('unlocked'); }, 950);
+  }
+
+  function showTab(name) {
+    const c = name === 'compare';
+    tabO.setAttribute('aria-selected', String(!c));
+    tabC.setAttribute('aria-selected', String(c));
+    $('panelOutline').hidden = c;
+    $('panelCompare').hidden = !c;
+    if (c) {
+      setPlaying(false);
+      if (!st.shown) { st.shown = true; showResults(); }
+    } else {
+      st.needs = true;
+      requestAnimationFrame(resize);
+    }
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }
+
+  tabO.addEventListener('click', () => showTab('outline'));
+  tabC.addEventListener('click', () => {
+    if (!st.unlocked) {
+      tabC.classList.remove('shake');
+      void tabC.offsetWidth;
+      tabC.classList.add('shake');
+      hint('Compare unlocks once you submit an outline.');
+      return;
+    }
+    showTab('compare');
+  });
+
+  function reset() {
+    Object.assign(st, { outline: null, stroke: null, pen: false, submitted: false, unlocked: false, reveal: 0,
+                        res: null, shown: false, z: 1, ox: 0, oy: 0 });
+    tabC.classList.remove('unlocked', 'unlocking');
+    tabC.classList.add('locked');
+    tabC.setAttribute('aria-disabled', 'true');
+    for (const id of ['ringDice', 'ringR']) $(id).style.strokeDashoffset = '';
+    ui();
+    showTab('outline');
+    setFrame(0);
+    hint('Press play. Pause when you see a flash, then pinch or tap + to zoom in.');
+  }
+
+  // ── comparison ────────────────────────────────────────────────────────
+  // mask = pixels whose centre lies inside the drawn loop (even-odd scanline fill)
+  function polyMask(pts) {
+    const { W, H } = st, m = new Uint8Array(W * H), n = pts.length;
+    for (let y = 0; y < H; y++) {
+      const yc = y + 0.5, xs = [];
+      for (let i = 0, j = n - 1; i < n; j = i++) {
+        const [xi, yi] = pts[i], [xj, yj] = pts[j];
+        if ((yi > yc) !== (yj > yc)) xs.push(xi + (yc - yi) * (xj - xi) / (yj - yi));
+      }
+      xs.sort((a, b) => a - b);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const a = Math.max(0, Math.ceil(xs[k] - 0.5)), b = Math.min(W - 1, Math.floor(xs[k + 1] - 0.5));
+        for (let x = a; x <= b; x++) m[y * W + x] = 1;
+      }
+    }
+    return m;
+  }
+
+  function hullMean(mask) {
+    const idx = [];
+    for (let i = 0; i < st.N; i++) if (mask[i]) idx.push(i);
+    if (!idx.length) return null;
+    const out = new Float64Array(st.T);
+    for (let t = 0; t < st.T; t++) {
+      const base = t * st.N;
+      let s = 0;
+      for (const i of idx) s += st.frames[base + i];
+      out[t] = s / idx.length;
+    }
+    return out;
+  }
+
+  function dff(x) {                       // centred moving average, then (x - F0) / F0, F0 = 20th percentile
+    const w = Math.max(1, st.clip.trace_avg | 0), h = w >> 1, T = x.length, y = new Float64Array(T);
+    for (let t = 0; t < T; t++) {
+      const a = Math.max(0, t - h), b = Math.min(T - 1, t + h);
+      let s = 0;
+      for (let k = a; k <= b; k++) s += x[k];
+      y[t] = s / (b - a + 1);
+    }
+    const sorted = Array.from(y).sort((a, b) => a - b);
+    const q = 0.2 * (T - 1), lo = Math.floor(q), f0 = sorted[lo] + (sorted[Math.min(T - 1, lo + 1)] - sorted[lo]) * (q - lo);
+    const d = Math.max(f0, 1);
+    return y.map((v) => (v - f0) / d);
+  }
+
+  function pearson(a, b) {
+    const n = a.length;
+    let ma = 0, mb = 0;
+    for (let i = 0; i < n; i++) { ma += a[i]; mb += b[i]; }
+    ma /= n; mb /= n;
+    let sab = 0, saa = 0, sbb = 0;
+    for (let i = 0; i < n; i++) {
+      const da = a[i] - ma, db = b[i] - mb;
+      sab += da * db; saa += da * da; sbb += db * db;
+    }
+    return saa > 0 && sbb > 0 ? sab / Math.sqrt(saa * sbb) : null;
+  }
+
+  function compare() {
+    const mU = polyMask(st.outline), mP = st.pMask;
+    let nU = 0, nP = 0, both = 0;
+    for (let i = 0; i < st.N; i++) { nU += mU[i]; nP += mP[i]; both += mU[i] & mP[i]; }
+    const dice = nU + nP ? 2 * both / (nU + nP) : 0;
+    const xP = hullMean(mP), xU = hullMean(mU);
+    const tP = dff(xP), tU = xU ? dff(xU) : null;
+    const p = st.clip.pursuit, a = Math.max(0, p.onset - 3), b = Math.min(st.T - 1, p.offset + 3);
+    const peak = (t) => { let m = -Infinity; for (let i = a; i <= b; i++) m = Math.max(m, t[i]); return m; };
+    return { dice, nU, nP, tP, tU, r: tU ? pearson(tU, tP) : null, pkP: peak(tP), pkU: tU ? peak(tU) : null };
+  }
+
+  function verdict(r) {
+    const d = r.dice;
+    let s = d >= 0.75 ? 'Your outline and PURsuit’s nearly coincide.'
+          : d >= 0.5 ? 'Your outline and PURsuit’s largely overlap.'
+          : d >= 0.25 ? 'Your outline and PURsuit’s partly overlap.'
+          : d > 0 ? 'Your outline and PURsuit’s barely overlap.'
+          : 'Your outline and PURsuit’s do not overlap.';
+    if (r.r === null) return s + ' Your outline covers no whole pixel, so it has no trace.';
+    s += r.r >= 0.9 ? ' The two traces have almost the same shape'
+       : r.r >= 0.7 ? ' The two traces have a similar shape'
+       : ' The two traces differ in shape';
+    if (r.nU > 1.3 * r.nP && r.pkU < 0.9 * r.pkP) s += ', but yours peaks lower: a larger outline averages in more background.';
+    else if (r.nU < 0.77 * r.nP && r.pkU > 1.1 * r.pkP) s += ', and yours peaks higher: a tighter outline keeps the brightest pixels.';
+    else s += '.';
+    return s;
+  }
+
+  function ring(id, v) {
+    const c = $(id), L = 2 * Math.PI * 25;
+    c.style.strokeDasharray = String(L);
+    c.style.strokeDashoffset = String(L);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      c.style.strokeDashoffset = String(L * (1 - Math.max(0, Math.min(1, v))));
+    }));
+  }
+
+  function countUp(id, v) {
+    const el = $(id);
+    if (v === null) { el.textContent = '–'; return; }
+    if (reduceMotion) { el.textContent = v.toFixed(2); return; }
+    const t0 = performance.now();
+    const step = (now) => {
+      const u = Math.min(1, (now - t0) / 900), e = 1 - Math.pow(1 - u, 3);
+      el.textContent = (v * e).toFixed(2);
+      if (u < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  function niceTicks(lo, hi, n) {
+    const raw = (hi - lo) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), e = raw / mag;
+    const step = (e >= 7.5 ? 10 : e >= 3.5 ? 5 : e >= 1.5 ? 2 : 1) * mag;
+    const out = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-6; v += step) out.push(+v.toFixed(6));
+    return out;
+  }
+
+  function chart(r) {
+    const Wc = 340, Hc = 200, m = { l: 38, r: 8, t: 8, b: 34 };
+    const T = st.T, c = st.clip, p = c.pursuit;
+    const all = r.tU ? Array.from(r.tP).concat(Array.from(r.tU)) : Array.from(r.tP);
+    let lo = Math.min(...all), hi = Math.max(...all);
+    const pad = (hi - lo) * 0.06 || 0.1;
+    lo -= pad; hi += pad;
+    const X = (i) => m.l + (i / (T - 1)) * (Wc - m.l - m.r);
+    const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * (Hc - m.t - m.b);
+    let s = '';
+    for (const v of niceTicks(lo, hi, 4)) {
+      s += `<line class="grid" x1="${m.l}" x2="${Wc - m.r}" y1="${Y(v)}" y2="${Y(v)}"/>`;
+      s += `<text x="${m.l - 5}" y="${Y(v) + 3.5}" text-anchor="end">${+v.toFixed(2)}</text>`;
+    }
+    s += `<rect class="win" x="${X(p.onset)}" y="${m.t}" width="${Math.max(1, X(p.offset) - X(p.onset))}" height="${Hc - m.t - m.b}"/>`;
+    const span = (T - 1) * c.frame_s;
+    for (const v of niceTicks(0, span, 4)) {
+      const x = m.l + (v / span) * (Wc - m.l - m.r);
+      s += `<line class="axis" x1="${x}" x2="${x}" y1="${Hc - m.b}" y2="${Hc - m.b + 4}"/>`;
+      s += `<text x="${x}" y="${Hc - m.b + 16}" text-anchor="middle">${v}</text>`;
+    }
+    s += `<line class="axis" x1="${m.l}" x2="${Wc - m.r}" y1="${Hc - m.b}" y2="${Hc - m.b}"/>`;
+    s += `<text x="${(m.l + Wc - m.r) / 2}" y="${Hc - 3}" text-anchor="middle">Time (s)</text>`;
+    const line = (t) => Array.from(t, (v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join('');
+    s += `<path class="lp" d="${line(r.tP)}"/>`;
+    if (r.tU) s += `<path class="lu" d="${line(r.tU)}"/>`;
+    $('chart').innerHTML = s;
+  }
+
+  function still() {
+    const c = $('still'), w = c.getBoundingClientRect().width || 320, dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const h = w * st.H / st.W;
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    c.style.height = h + 'px';
+    const o = document.createElement('canvas');
+    o.width = st.W; o.height = st.H;
+    const oc = o.getContext('2d'), img = oc.createImageData(st.W, st.H);
+    paintFrame(st.clip.pursuit.peak, img, oc);
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(o, 0, 0, w, h);
+    g.lineJoin = 'round';
+    drawOutlines(g, w / st.W, 0, 0, 2.2);
+  }
+
+  function showResults() {
+    const r = st.res;
+    countUp('dice', r.dice);
+    countUp('rval', r.r);
+    ring('ringDice', r.dice);
+    ring('ringR', r.r === null ? 0 : r.r);
+    $('verdict').textContent = verdict(r);
+    $('pkP').textContent = r.pkP.toFixed(2);
+    $('pkU').textContent = r.pkU === null ? '–' : r.pkU.toFixed(2);
+    chart(r);
+    still();
+  }
+
+  // ── #autotest: an ellipse 1.25x PURsuit's extent, submitted, then Compare ──
+  function autotest(stayOnOutline) {
+    const xs = st.pHull.map((q) => q[0]), ys = st.pHull.map((q) => q[1]);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const rx = 0.625 * (Math.max(...xs) - Math.min(...xs)), ry = 0.625 * (Math.max(...ys) - Math.min(...ys));
+    st.outline = Array.from({ length: 72 }, (_, i) => [cx + rx * Math.cos(i * Math.PI / 36), cy + ry * Math.sin(i * Math.PI / 36)]);
+    ui();
+    $('submit').click();
+    st.reveal = 1;
+    if (!stayOnOutline) showTab('compare');
+    console.log('autotest', JSON.stringify({ dice: st.res.dice, r: st.res.r, nU: st.res.nU, nP: st.res.nP,
+                                             pkU: st.res.pkU, pkP: st.res.pkP, cx, cy, rx, ry }));
+  }
+
+  ui();
+  load();
+})();
+</script>
+</body>
+</html>
