@@ -7,15 +7,6 @@
 <title>You're the Expert</title>
 <meta name="description" content="Pick a card, find the event in a short imaging movie, outline it by hand, then compare your outline and trace with PURsuit's.">
 <link rel="icon" href="data:,">
-<!--
-  SfN 2026 poster QR page, three-card version (2026-11-07). One file; game.json lists the clips, each clip is
-  clip_<id>.json + frames_<id>.webp (frames tiled) + full_<id>.webp (whole image), written by
-  atp/make_roi_game_site_20261107.py. Flow: pick a face-down card (recordings shuffled per visit) -> play / pause /
-  zoom, Hint (unlocks after 10 s of playing) shows a box 1.5 x the event's box for 20 s -> Draw (one finger is a pen,
-  Redraw is the only edit) -> Submit -> PURsuit's outline appears and Compare unlocks: Dice, Pearson r, peak dF/F0,
-  PURsuit's trace over the whole recording, the view next to the whole image. Colours: PURsuit blue, the visitor
-  white with a grey edge, the hint orange. #autotest=<id> runs the flow on a fixed ellipse; #debug exposes state.
--->
 <style>
 :root {
   --bg: #f4f6f8;
@@ -70,7 +61,6 @@
   --viewer: #05080a;
   --shadow: none;
 }
-
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -86,8 +76,6 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--pur); outli
   margin: 0 auto;
   padding: 14px 16px calc(28px + env(safe-area-inset-bottom));
 }
-
-/* header */
 .eyebrow {
   margin: 0;
   font-size: 12px;
@@ -108,8 +96,6 @@ h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; te
   color: var(--muted);
   font-size: 12.5px;
 }
-
-/* card picker */
 .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0 10px; }
 .pcard {
   aspect-ratio: 3 / 4;
@@ -169,7 +155,7 @@ h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; te
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
-.pface .bar {                          /* shows while the turned card's recording downloads */
+.pface .bar {
   position: absolute;
   left: 16%;
   right: 16%;
@@ -193,8 +179,6 @@ h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; te
 .pcard.busy .pface .bar { opacity: 1; }
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 .pick-note { margin: 0; color: var(--muted); font-size: 14.5px; min-height: 3em; }
-
-/* game header */
 .cliphead { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; }
 .back {
   flex: none;
@@ -208,8 +192,6 @@ h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; te
 }
 .cliptitle { font-size: 15px; font-weight: 700; }
 .cliptitle span { color: var(--muted); font-weight: 500; }
-
-/* tabs */
 .tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -261,8 +243,6 @@ h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; te
   20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
   60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
 }
-
-/* outline panel; the movie shrinks on short screens so Draw / Submit stay in view */
 .viewer {
   position: relative;
   width: 100%;
@@ -318,7 +298,7 @@ h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; te
 .hintbtn { gap: 1px; height: 44px !important; }
 .hintbtn .lock { width: 13px; height: 13px; }
 .hintbtn.locked span { opacity: 0.6; }
-.hintbtn.locked::after {               /* fills while the movie plays; the button unlocks when full */
+.hintbtn.locked::after {
   content: "";
   position: absolute;
   left: 0;
@@ -384,8 +364,6 @@ h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; te
 .key { display: inline-block; width: 20px; margin-right: 6px; vertical-align: middle; }
 .key.you { height: 6px; border: 1.5px solid var(--you-edge); border-radius: 3px; background: var(--you-core); }
 .key.pur { height: 0; border-top: 3px solid var(--pur); }
-
-/* compare panel */
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat {
   padding: 14px;
@@ -442,9 +420,6 @@ h1 { margin: 4px 0 6px; font-size: 25px; line-height: 1.15; font-weight: 750; te
 footer { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
 footer p { margin: 0; }
 [hidden] { display: none !important; }
-
-/* reduced motion (the OS setting; #motion in the URL overrides it for previews): nothing turns, lifts or slides;
-   the card reveal fades instead and still waits for the download */
 .calm .pcard { transform: none !important; transition: opacity 0.4s; }
 .calm .pin, .calm .pcard.flipped .pin { transform: none; transition: none; }
 .calm .pface { transform: none; opacity: 0; transition: opacity 0.6s; }
@@ -465,18 +440,15 @@ footer p { margin: 0; }
     <p class="lead">Pick a card, find the event in the movie and outline it by hand. Then see how PURsuit’s outline compares with yours.</p>
     <p class="flag" id="flag" hidden>Demo with synthetic data, not recordings</p>
   </header>
-
   <section id="picker" aria-label="Pick a recording">
     <div class="cards" id="cards"></div>
     <p class="pick-note" id="pickNote" aria-live="polite">Each card hides one recording. Tap a card to start.</p>
   </section>
-
   <section id="game" hidden>
     <div class="cliphead">
       <button type="button" class="back" id="back">‹ Cards</button>
       <div class="cliptitle" id="clipTitle"></div>
     </div>
-
     <nav class="tabs" role="tablist" aria-label="Steps">
       <button class="tab" role="tab" id="tabOutline" aria-selected="true" aria-controls="panelOutline">Outline</button>
       <button class="tab locked" role="tab" id="tabCompare" aria-selected="false" aria-controls="panelCompare"
@@ -489,7 +461,6 @@ footer p { margin: 0; }
         <span>Compare</span>
       </button>
     </nav>
-
     <section id="panelOutline" role="tabpanel" aria-labelledby="tabOutline">
       <div class="viewer" id="viewer">
         <canvas id="cv" role="img" aria-label="Imaging movie. Pinch or use the plus and minus buttons to zoom; with the pen on, draw an outline with one finger."></canvas>
@@ -527,7 +498,6 @@ footer p { margin: 0; }
       </div>
       <p class="hint" id="hint" aria-live="polite"></p>
     </section>
-
     <section id="panelCompare" role="tabpanel" aria-labelledby="tabCompare" hidden>
       <div class="stats">
         <div class="stat">
@@ -574,10 +544,8 @@ footer p { margin: 0; }
       </div>
     </section>
   </section>
-
   <footer><p id="caption"></p></footer>
 </main>
-
 <script>
 (() => {
   'use strict';
@@ -586,11 +554,10 @@ footer p { margin: 0; }
   document.documentElement.classList.toggle('calm', reduceMotion);
   const PUR_V = '#5eaedb', YOU_CORE = '#ffffff', YOU_EDGE = 'rgba(48, 56, 64, 0.92)', HINT_V = '#ff9a3c';
   const ZMAX = 10, HINT_AFTER_S = 10, HINT_SHOW_MS = 20000;
-  const REVEAL_MIN_MS = 3600, REVEAL_MAX_MS = 8000;    // card reveal: at least this long, then until loaded
+  const REVEAL_MIN_MS = 3600, REVEAL_MAX_MS = 8000;
   const START_HINT = 'Press play and look for a flash. Pause, then pinch or tap + to zoom in.';
-
   const st = {
-    game: null, order: [], played: {}, cache: {}, cur: null, token: 0,
+    game: null, deck: [], dealt: 0, played: {}, saved: {}, dl: {}, cache: {}, cur: null, token: 0,
     clip: null, frames: null, W: 0, H: 0, T: 0, N: 0,
     frame: 0, playing: false, acc: 0, last: 0, playT: 0, hintOpen: false, hintUntil: 0,
     pen: false, stroke: null, outline: null, submitted: false, unlocked: false,
@@ -599,27 +566,24 @@ footer p { margin: 0; }
     pointers: new Map(), pinch: null, pan: null,
     needs: true, frameDirty: true, res: null, shown: false,
   };
-  if (location.hash === '#debug') window.__st = st;     // for the touch test only
   const cv = $('cv'), ctx = cv.getContext('2d');
   let off, offCtx, offImg;
-
-  // ── loading ───────────────────────────────────────────────────────────
   function b64bytes(b64) {
     const bin = atob(b64), out = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out;
   }
-
   async function getJSON(url) {
     const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
     return res.json();
   }
-
-  async function decodeImage(url) {                    // raw pixel values: no colour management, no premultiply
+  async function fetchBlob(url) {
     const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error(url + ': HTTP ' + res.status);
-    const blob = await res.blob();
+    return res.blob();
+  }
+  async function decodeImage(blob) {
     let src;
     try {
       src = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
@@ -627,7 +591,7 @@ footer p { margin: 0; }
       src = await new Promise((ok, fail) => {
         const im = new Image();
         im.onload = () => ok(im);
-        im.onerror = () => fail(new Error(url + ': cannot decode'));
+        im.onerror = () => fail(new Error('cannot decode an image'));
         im.src = URL.createObjectURL(blob);
       });
     }
@@ -637,13 +601,23 @@ footer p { margin: 0; }
     g.drawImage(src, 0, 0);
     return { w: c.width, h: c.height, data: g.getImageData(0, 0, c.width, c.height).data };
   }
-
-  async function fetchClip(entry) {
-    const clip = await getJSON(entry.file);
-    const sp = clip.sprite, W = clip.width, H = clip.height, T = clip.n_frames, N = W * H;
-    const [sheet, full] = await Promise.all([decodeImage(sp.file), decodeImage(clip.full.file)]);
+  function download(id) {
+    if (!st.dl[id]) {
+      const entry = st.game.clips.find((c) => c.id === id);
+      st.dl[id] = (async () => {
+        const clip = await getJSON(entry.file);
+        const [sheet, full] = await Promise.all([fetchBlob(clip.sprite.file), fetchBlob(clip.full.file)]);
+        return { clip, sheet, full };
+      })();
+      st.dl[id].catch(() => { delete st.dl[id]; });
+    }
+    return st.dl[id];
+  }
+  async function decodeClip(d) {
+    const clip = d.clip, sp = clip.sprite, W = clip.width, H = clip.height, T = clip.n_frames, N = W * H;
+    const [sheet, full] = await Promise.all([decodeImage(d.sheet), decodeImage(d.full)]);
     const frames = new Uint8Array(N * T);
-    for (let t = 0; t < T; t++) {                       // red channel of each tile (grey: R = G = B)
+    for (let t = 0; t < T; t++) {
       const tx = (t % sp.cols) * sp.tw, ty = Math.floor(t / sp.cols) * sp.th;
       for (let y = 0; y < H; y++) {
         let si = ((ty + y) * sheet.w + tx) * 4;
@@ -655,23 +629,18 @@ footer p { margin: 0; }
     for (let i = 0; i < fullGrey.length; i++) fullGrey[i] = full.data[i * 4];
     return { clip, frames, pMask: b64bytes(clip.pursuit.mask_b64), full: { w: full.w, h: full.h, px: fullGrey } };
   }
-
   function loadClip(id) {
     if (!st.cache[id]) {
-      const entry = st.game.clips.find((c) => c.id === id);
-      st.cache[id] = fetchClip(entry);
-      st.cache[id].catch(() => { delete st.cache[id]; });   // allow a retry
+      st.cache[id] = download(id).then(decodeClip);
+      st.cache[id].catch(() => { delete st.cache[id]; });
     }
     return st.cache[id];
   }
-
-  async function prefetchRest() {                       // one at a time, after the visitor's clip is in
-    for (const c of st.game.clips) {
-      if (!st.cache[c.id]) { try { await loadClip(c.id); } catch (_) { /* retried when picked */ } }
+  async function downloadDeck() {
+    for (const id of st.deck.slice()) {
+      try { await download(id); } catch (_) {  }
     }
   }
-
-  // ── cards ─────────────────────────────────────────────────────────────
   async function start() {
     try {
       st.game = await getJSON('game.json');
@@ -680,43 +649,39 @@ footer p { margin: 0; }
       return;
     }
     $('flag').hidden = !st.game.synthetic;
-    st.order = st.game.clips.map((c) => c.id);
-    for (let i = st.order.length - 1; i > 0; i--) {     // shuffle: which recording is under which card
+    st.deck = st.game.clips.map((c) => c.id);
+    for (let i = st.deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [st.order[i], st.order[j]] = [st.order[j], st.order[i]];
+      [st.deck[i], st.deck[j]] = [st.deck[j], st.deck[i]];
     }
+    downloadDeck();
     const box = $('cards');
-    st.order.forEach((id, i) => {
-      const c = st.game.clips.find((x) => x.id === id);
+    st.deck.forEach((_, i) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'pcard';
-      b.dataset.id = id;
       b.setAttribute('aria-label', 'Card ' + (i + 1) + ', face down');
       b.innerHTML = '<span class="pin"><span class="pback" aria-hidden="true">?</span>' +
         '<span class="pface"><b></b><small></small><em hidden></em><i class="bar" aria-hidden="true"></i></span></span>';
-      b.querySelector('b').textContent = c.title;
-      b.querySelector('small').textContent = c.sub;
-      b.addEventListener('click', () => pick(b, c));
+      b.addEventListener('click', () => pick(b));
       box.appendChild(b);
     });
     requestAnimationFrame(tick);
     window.addEventListener('resize', resize);
-    const m = location.hash.match(/^#autotest(?:=(\w+))?/);
-    if (m) {
-      const b = [...box.children].find((x) => x.dataset.id === (m[1] || st.order[0]));
-      pick(b, st.game.clips.find((x) => x.id === b.dataset.id), true);
-    }
   }
-
-  async function pick(btn, entry, auto) {
-    if (st.picking) return;                            // one card at a time while a card turns
-    const first = !btn.classList.contains('flipped');
+  async function pick(btn, auto) {
+    if (st.picking) return;
+    const first = !btn.dataset.id;
+    if (first) {
+      btn.dataset.id = st.deck[st.dealt++];
+      const c = st.game.clips.find((x) => x.id === btn.dataset.id);
+      btn.querySelector('b').textContent = c.title;
+      btn.querySelector('small').textContent = c.sub;
+    }
+    const entry = st.game.clips.find((x) => x.id === btn.dataset.id);
     const ready = loadClip(entry.id).then(() => true, () => false);
     btn.setAttribute('aria-label', entry.title + ', ' + entry.sub);
     if (!first || auto) { btn.classList.add('flipped'); openClip(entry, auto); return; }
-    // the reveal: the card lifts and turns slowly (reduced motion: fades) while its recording downloads; the game
-    // opens when both are done
     st.picking = true;
     const box = $('cards'), wait = (ms) => new Promise((r) => setTimeout(r, ms));
     box.classList.add('choosing');
@@ -733,9 +698,12 @@ footer p { margin: 0; }
     st.picking = false;
     openClip(entry, auto);
   }
-
   function showPicker() {
     setPlaying(false);
+    if (st.clip && st.cur) {
+      st.saved[st.cur] = { outline: st.outline, submitted: st.submitted, res: st.res, playT: st.playT,
+                           hintOpen: st.hintOpen };
+    }
     st.token++;
     $('game').hidden = true;
     $('picker').hidden = false;
@@ -747,7 +715,6 @@ footer p { margin: 0; }
       : 'Each card hides one recording. Tap a card to start.';
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
-
   async function openClip(entry, auto) {
     const token = ++st.token;
     st.cur = entry.id;
@@ -774,24 +741,21 @@ footer p { margin: 0; }
       if (token === st.token) $('loading').textContent = 'Could not load this movie. Check the connection and pick the card again.';
       return;
     }
-    if (token !== st.token) return;                    // the visitor went back meanwhile
+    if (token !== st.token) return;
     init(data);
-    prefetchRest();
-    if (auto) autotest(location.hash.includes('outline'));
   }
-
   function init(data) {
     const clip = data.clip;
     Object.assign(st, {
       clip, frames: data.frames, pMask: data.pMask, full: data.full,
       W: clip.width, H: clip.height, T: clip.n_frames, N: clip.width * clip.height,
-      pHull: clip.pursuit.hull.map(([x, y]) => [x + 0.5, y + 0.5]),   // pixel centres
+      pHull: clip.pursuit.hull.map(([x, y]) => [x + 0.5, y + 0.5]),
       playT: 0, hintOpen: false, hintUntil: 0,
     });
     const xs = clip.pursuit.hull.map((q) => q[0]), ys = clip.pursuit.hull.map((q) => q[1]);
     const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1, y0 = Math.min(...ys), y1 = Math.max(...ys) + 1;
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, hw = 0.75 * (x1 - x0), hh = 0.75 * (y1 - y0);
-    st.hintBox = [cx - hw, cy - hh, cx + hw, cy + hh];  // 1.5 x the event's box
+    st.hintBox = [cx - hw, cy - hh, cx + hw, cy + hh];
     off = document.createElement('canvas');
     off.width = st.W; off.height = st.H;
     offCtx = off.getContext('2d');
@@ -805,10 +769,33 @@ footer p { margin: 0; }
     $('zoom').hidden = false;
     hintButton();
     reset(true);
+    if (st.saved[clip.id]) restore(st.saved[clip.id]);
   }
-
-  // ── frames ────────────────────────────────────────────────────────────
-  // display = sliding mean over `smooth` frames centred on t (1 = the raw frame), mapped lo..hi -> 0..255
+  function restore(sv) {
+    st.playT = sv.playT;
+    st.hintOpen = sv.hintOpen;
+    if (st.hintOpen) {
+      $('zhint').classList.remove('locked', 'unlocking');
+      $('zhint').classList.add('unlocked');
+    } else {
+      hintButton();
+    }
+    st.outline = sv.outline;
+    if (sv.submitted) {
+      st.submitted = true;
+      st.res = sv.res;
+      st.reveal = 1;
+      setFrame(st.clip.pursuit.peak);
+      st.unlocked = true;
+      tabC.classList.remove('locked');
+      tabC.classList.add('unlocked');
+      tabC.setAttribute('aria-disabled', 'false');
+      hint('Your outline from before, with PURsuit’s in blue. Open Compare to see the result again; Try again there draws a new one.');
+    } else if (st.outline) {
+      hint('Your outline from before. Tap Submit when you are happy with it, or Redraw.');
+    }
+    ui();
+  }
   function paintFrame(t, img, c2) {
     const { N, T, frames } = st;
     const k = Math.max(1, st.clip.smooth | 0);
@@ -829,12 +816,10 @@ footer p { margin: 0; }
     }
     c2.putImageData(img, 0, 0);
   }
-
   function fmt(s) {
     s = Math.max(0, Math.round(s));
     return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   }
-
   function setFrame(t, fromScrub) {
     st.frame = t;
     st.frameDirty = true;
@@ -844,14 +829,12 @@ footer p { margin: 0; }
     $('clock').textContent = fmt(t / c.fps) + ' / ' + fmt(st.T / c.fps);
     $('hud').textContent = 'Recording ' + fmt(c.t0_s + t * c.frame_s);
   }
-
   function setPlaying(on) {
     st.playing = on && !!st.clip;
     st.acc = 0;
     $('play').setAttribute('aria-label', st.playing ? 'Pause' : 'Play');
     $('playIcon').setAttribute('d', st.playing ? 'M6 4.5h4v15H6zM14 4.5h4v15h-4z' : 'M7 4.5v15l12.5-7.5z');
   }
-
   function tick(now) {
     const dt = st.last ? Math.min(0.25, (now - st.last) / 1000) : 0;
     st.last = now;
@@ -876,8 +859,6 @@ footer p { margin: 0; }
     }
     requestAnimationFrame(tick);
   }
-
-  // ── view ──────────────────────────────────────────────────────────────
   function resize() {
     if (!st.clip) return;
     const r = $('viewer').getBoundingClientRect();
@@ -892,13 +873,11 @@ footer p { margin: 0; }
     clampView();
     st.needs = true;
   }
-
   function clampView() {
     const s = st.fit * st.z;
     st.ox = Math.min(0, Math.max(st.cssW - st.W * s, st.ox));
     st.oy = Math.min(0, Math.max(st.cssH - st.H * s, st.oy));
   }
-
   function zoomAt(px, py, factor) {
     const z1 = Math.min(ZMAX, Math.max(1, st.z * factor));
     const s0 = st.fit * st.z, s1 = st.fit * z1;
@@ -908,12 +887,10 @@ footer p { margin: 0; }
     clampView();
     st.needs = true;
   }
-
   function toImage(p) {
     const s = st.fit * st.z;
     return [Math.min(st.W, Math.max(0, (p.x - st.ox) / s)), Math.min(st.H, Math.max(0, (p.y - st.oy) / s))];
   }
-
   function pathOn(c, pts, s, ox, oy, closed, frac) {
     const n = pts.length;
     if (n < 2) return false;
@@ -924,7 +901,7 @@ footer p { margin: 0; }
       if (closed) c.closePath();
       return true;
     }
-    const ring = closed ? pts.concat([pts[0]]) : pts;      // partial path for the reveal
+    const ring = closed ? pts.concat([pts[0]]) : pts;
     let total = 0;
     for (let i = 1; i < ring.length; i++) total += Math.hypot(ring[i][0] - ring[i - 1][0], ring[i][1] - ring[i - 1][1]);
     let left = total * frac;
@@ -937,12 +914,10 @@ footer p { margin: 0; }
     }
     return true;
   }
-
-  function strokeYou(c, lw) {                          // white with a grey edge
+  function strokeYou(c, lw) {
     c.strokeStyle = YOU_EDGE; c.lineWidth = lw + 2.4; c.stroke();
     c.strokeStyle = YOU_CORE; c.lineWidth = lw; c.stroke();
   }
-
   function drawOutlines(c, s, ox, oy, lw) {
     if (st.outline && pathOn(c, st.outline, s, ox, oy, true, 1)) {
       c.fillStyle = 'rgba(255, 255, 255, 0.10)'; c.fill('evenodd');
@@ -952,20 +927,19 @@ footer p { margin: 0; }
       c.strokeStyle = PUR_V; c.lineWidth = lw; c.stroke();
     }
   }
-
   function render(now) {
     if (st.frameDirty) { paintFrame(st.frame, offImg, offCtx); st.frameDirty = false; }
     ctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0);
     ctx.fillStyle = '#05080a';
     ctx.fillRect(0, 0, st.cssW, st.cssH);
     const s = st.fit * st.z;
-    ctx.imageSmoothingEnabled = false;                 // native pixels, no interpolation
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(off, st.ox, st.oy, st.W * s, st.H * s);
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     drawOutlines(ctx, s, st.ox, st.oy, 2.2);
     if (st.stroke && pathOn(ctx, st.stroke, s, st.ox, st.oy, false, 1)) {
       strokeYou(ctx, 2.2);
-      const a = st.stroke[0], b = st.stroke[st.stroke.length - 1];   // where the loop will close
+      const a = st.stroke[0], b = st.stroke[st.stroke.length - 1];
       ctx.setLineDash([4, 5]);
       ctx.beginPath();
       ctx.moveTo(st.ox + b[0] * s, st.oy + b[1] * s);
@@ -985,19 +959,15 @@ footer p { margin: 0; }
       st.hintUntil = 0;
     }
   }
-
-  // ── gestures: one finger pans (or draws with the pen on), two fingers pinch ──
   function local(e) {
     const r = cv.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
-
   function startPinch() {
     const [a, b] = [...st.pointers.values()];
     st.pinch = { d: Math.hypot(b.x - a.x, b.y - a.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
                  z: st.z, ox: st.ox, oy: st.oy };
   }
-
   function movePinch() {
     const [a, b] = [...st.pointers.values()];
     const p = st.pinch;
@@ -1009,11 +979,10 @@ footer p { margin: 0; }
     st.ox = mx - ix * s1; st.oy = my - iy * s1;
     clampView();
   }
-
   cv.addEventListener('pointerdown', (e) => {
     if (!st.clip) return;
     e.preventDefault();
-    try { cv.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {  }
     const p = local(e);
     st.pointers.set(e.pointerId, p);
     if (st.pointers.size === 2) {
@@ -1030,7 +999,6 @@ footer p { margin: 0; }
     }
     st.needs = true;
   });
-
   cv.addEventListener('pointermove', (e) => {
     if (!st.pointers.has(e.pointerId)) return;
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
@@ -1051,7 +1019,6 @@ footer p { margin: 0; }
     }
     st.needs = true;
   });
-
   function pointerEnd(e, cancelled) {
     if (!st.pointers.has(e.pointerId)) return;
     st.pointers.delete(e.pointerId);
@@ -1076,13 +1043,11 @@ footer p { margin: 0; }
     const p = local(e);
     zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
   }, { passive: false });
-
   function polyArea(pts) {
     let a = 0;
     for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) a += (pts[j][0] + pts[i][0]) * (pts[j][1] - pts[i][1]);
     return Math.abs(a / 2);
   }
-
   function finishStroke() {
     const pts = st.stroke;
     st.stroke = null;
@@ -1095,10 +1060,7 @@ footer p { margin: 0; }
     ui();
     hint('Happy with it? Tap Submit. Redraw starts the outline again.');
   }
-
-  // ── buttons ───────────────────────────────────────────────────────────
   function hint(s) { $('hint').textContent = s; }
-
   function ui() {
     const d = $('draw');
     d.textContent = st.outline ? 'Redraw' : st.pen ? 'Pen on · tap to stop' : 'Draw';
@@ -1115,7 +1077,6 @@ footer p { margin: 0; }
     $('zhint').hidden = st.submitted;
     st.needs = true;
   }
-
   function hintButton() {
     const b = $('zhint');
     b.classList.toggle('locked', !st.hintOpen);
@@ -1125,7 +1086,6 @@ footer p { margin: 0; }
       b.setAttribute('aria-label', 'Hint, unlocks after ' + HINT_AFTER_S + ' seconds of playing');
     }
   }
-
   function unlockHint() {
     st.hintOpen = true;
     const b = $('zhint');
@@ -1135,7 +1095,6 @@ footer p { margin: 0; }
     b.classList.add('unlocking');
     setTimeout(() => { b.classList.remove('unlocking'); b.classList.add('unlocked'); }, 950);
   }
-
   $('zhint').addEventListener('click', () => {
     if (!st.clip) return;
     const b = $('zhint');
@@ -1150,16 +1109,14 @@ footer p { margin: 0; }
     st.needs = true;
     hint('The orange box shows where to look. It fades after ' + HINT_SHOW_MS / 1000 + ' seconds.');
   });
-
   $('play').addEventListener('click', () => { if (st.clip) setPlaying(!st.playing); });
   $('scrub').addEventListener('input', (e) => { if (st.clip) setFrame(+e.target.value, true); });
   $('zin').addEventListener('click', () => zoomAt(st.cssW / 2, st.cssH / 2, 1.6));
   $('zout').addEventListener('click', () => zoomAt(st.cssW / 2, st.cssH / 2, 1 / 1.6));
   $('zfit').addEventListener('click', () => { st.z = 1; st.ox = 0; st.oy = 0; st.needs = true; });
-
   $('draw').addEventListener('click', () => {
     if (!st.clip || st.submitted) return;
-    if (st.outline) {                       // Redraw: the only edit
+    if (st.outline) {
       st.outline = null;
       st.pen = true;
       hint('Pen on: draw one loop around the event with one finger. Two fingers still zoom.');
@@ -1171,7 +1128,6 @@ footer p { margin: 0; }
     if (st.pen) setPlaying(false);
     ui();
   });
-
   $('submit').addEventListener('click', () => {
     if (!st.outline || st.submitted) return;
     st.submitted = true;
@@ -1186,15 +1142,11 @@ footer p { margin: 0; }
     hint('Blue is PURsuit’s outline. Scrub the movie to look again, then open Compare.');
     setTimeout(unlock, reduceMotion ? 0 : 1000);
   });
-
   $('goCompare').addEventListener('click', () => showTab('compare'));
   $('again').addEventListener('click', () => reset());
   $('another').addEventListener('click', showPicker);
   $('back').addEventListener('click', showPicker);
-
-  // ── tabs ──────────────────────────────────────────────────────────────
   const tabO = $('tabOutline'), tabC = $('tabCompare');
-
   function unlock() {
     if (!st.submitted) return;
     st.unlocked = true;
@@ -1202,10 +1154,9 @@ footer p { margin: 0; }
     tabC.setAttribute('aria-disabled', 'false');
     if (reduceMotion) { tabC.classList.add('unlocked'); return; }
     tabC.classList.add('unlocking');
-    if (navigator.vibrate) { try { navigator.vibrate(25); } catch (_) { /* not allowed */ } }
+    if (navigator.vibrate) { try { navigator.vibrate(25); } catch (_) {  } }
     setTimeout(() => { tabC.classList.remove('unlocking'); tabC.classList.add('unlocked'); }, 950);
   }
-
   function showTab(name, quiet) {
     const c = name === 'compare';
     tabO.setAttribute('aria-selected', String(!c));
@@ -1221,7 +1172,6 @@ footer p { margin: 0; }
     }
     if (!quiet) window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
   }
-
   tabO.addEventListener('click', () => showTab('outline'));
   tabC.addEventListener('click', () => {
     if (!st.unlocked) {
@@ -1233,7 +1183,6 @@ footer p { margin: 0; }
     }
     showTab('compare');
   });
-
   function reset(fresh) {
     Object.assign(st, { outline: null, stroke: null, pen: false, submitted: false, unlocked: false, reveal: 0,
                         res: null, shown: false, z: 1, ox: 0, oy: 0, hintUntil: 0 });
@@ -1247,9 +1196,6 @@ footer p { margin: 0; }
     setFrame(0);
     hint(START_HINT);
   }
-
-  // ── comparison ────────────────────────────────────────────────────────
-  // mask = pixels whose centre lies inside the drawn loop (even-odd scanline fill)
   function polyMask(pts) {
     const { W, H } = st, m = new Uint8Array(W * H), n = pts.length;
     for (let y = 0; y < H; y++) {
@@ -1266,7 +1212,6 @@ footer p { margin: 0; }
     }
     return m;
   }
-
   function hullMean(mask) {
     const idx = [];
     for (let i = 0; i < st.N; i++) if (mask[i]) idx.push(i);
@@ -1280,8 +1225,7 @@ footer p { margin: 0; }
     }
     return out;
   }
-
-  function dff(x) {                       // centred moving average, then (x - F0) / F0, F0 = 20th percentile
+  function dff(x) {
     const w = Math.max(1, st.clip.trace_avg | 0), h = w >> 1, T = x.length, y = new Float64Array(T);
     for (let t = 0; t < T; t++) {
       const a = Math.max(0, t - h), b = Math.min(T - 1, t + h);
@@ -1294,7 +1238,6 @@ footer p { margin: 0; }
     const d = Math.max(f0, 1);
     return y.map((v) => (v - f0) / d);
   }
-
   function pearson(a, b) {
     const n = a.length;
     let ma = 0, mb = 0;
@@ -1307,7 +1250,6 @@ footer p { margin: 0; }
     }
     return saa > 0 && sbb > 0 ? sab / Math.sqrt(saa * sbb) : null;
   }
-
   function compare() {
     const mU = polyMask(st.outline), mP = st.pMask;
     let nU = 0, nP = 0, both = 0;
@@ -1319,8 +1261,6 @@ footer p { margin: 0; }
     const peak = (t) => { let m = -Infinity; for (let i = a; i <= b; i++) m = Math.max(m, t[i]); return m; };
     return { dice, nU, nP, tP, tU, r: tU ? pearson(tU, tP) : null, pkP: peak(tP), pkU: tU ? peak(tU) : null };
   }
-
-  // neutral: both outlines described alike; the size note names whichever outline is larger
   function verdict(r) {
     const d = r.dice;
     let s = d >= 0.75 ? 'The two outlines overlap almost completely.'
@@ -1333,13 +1273,12 @@ footer p { margin: 0; }
                                : ' Their traces rise and fall almost together.')
        : r.r >= 0.7 ? ' Their traces follow a similar course.'
        : ' Their traces follow different courses.';
-    if (d < 0.25 || r.r < 0.7) return s;              // the size note only compares two outlines of the same event
+    if (d < 0.25 || r.r < 0.7) return s;
     const larger = r.nU > 1.3 * r.nP && r.pkU < 0.9 * r.pkP ? 'yours'
                  : r.nP > 1.3 * r.nU && r.pkP < 0.9 * r.pkU ? 'PURsuit’s' : null;
     if (larger) s += ' The larger outline, ' + larger + ', also takes in some background, so its peak is lower.';
     return s;
   }
-
   function ring(id, v) {
     const c = $(id), L = 2 * Math.PI * 25;
     c.style.strokeDasharray = String(L);
@@ -1348,7 +1287,6 @@ footer p { margin: 0; }
       c.style.strokeDashoffset = String(L * (1 - Math.max(0, Math.min(1, v))));
     }));
   }
-
   function countUp(id, v) {
     const el = $(id);
     if (v === null) { el.textContent = '–'; return; }
@@ -1361,7 +1299,6 @@ footer p { margin: 0; }
     };
     requestAnimationFrame(step);
   }
-
   function niceTicks(lo, hi, n) {
     const raw = (hi - lo) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), e = raw / mag;
     const step = (e >= 7.5 ? 10 : e >= 3.5 ? 5 : e >= 1.5 ? 2 : 1) * mag;
@@ -1369,7 +1306,6 @@ footer p { margin: 0; }
     for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-6; v += step) out.push(+v.toFixed(6));
     return out;
   }
-
   function chart(r) {
     const Wc = 340, Hc = 200, m = { l: 38, r: 8, t: 8, b: 34 };
     const T = st.T, c = st.clip, p = c.pursuit;
@@ -1398,8 +1334,7 @@ footer p { margin: 0; }
     s += `<path class="lp" d="${line(r.tP)}"/>`;
     $('chart').innerHTML = s;
   }
-
-  function strip() {                       // PURsuit's trace over the whole recording, this clip shaded
+  function strip() {
     const tl = st.clip.timeline, v = tl.values, n = v.length, Wc = 340, x0 = 38, x1 = Wc - 8, y0 = 15, y1 = 38;
     let lo = Infinity, hi = -Infinity;
     for (const a of v) { lo = Math.min(lo, a); hi = Math.max(hi, a); }
@@ -1414,7 +1349,6 @@ footer p { margin: 0; }
       `<rect class="clipwin" x="${XF(tl.clip[0]).toFixed(1)}" y="${y0 - 1}" width="${Math.max(2, XF(tl.clip[1]) - XF(tl.clip[0])).toFixed(1)}" height="${y1 - y0 + 2}"/>` +
       `<path class="tl" d="${d}"/>`;
   }
-
   function sizeCanvas(c, w, h) {
     const dpr = Math.min(window.devicePixelRatio || 1, 3), cw = c.getBoundingClientRect().width || 160;
     const ch = cw * h / w;
@@ -1425,8 +1359,7 @@ footer p { margin: 0; }
     g.imageSmoothingEnabled = false;
     return { g, cw, ch };
   }
-
-  function still() {                       // the view at the peak with both outlines
+  function still() {
     const { g, cw } = sizeCanvas($('still'), st.W, st.H);
     const o = document.createElement('canvas');
     o.width = st.W; o.height = st.H;
@@ -1436,14 +1369,13 @@ footer p { margin: 0; }
     g.lineJoin = 'round';
     drawOutlines(g, cw / st.W, 0, 0, 1.8);
   }
-
-  function fullImage() {                   // the whole image at the peak, the view marked
+  function fullImage() {
     const f = st.full, c = st.clip, [vx, vy, vs] = c.full.crop;
     const { g, cw } = sizeCanvas($('fullc'), f.w, f.h);
     const o = document.createElement('canvas');
     o.width = f.w; o.height = f.h;
     const oc = o.getContext('2d'), img = oc.createImageData(f.w, f.h), d = img.data;
-    const dsp = c.full.display || c.display, lo = dsp.lo, sc = 255 / (dsp.hi - dsp.lo);   // the image's own range
+    const dsp = c.full.display || c.display, lo = dsp.lo, sc = 255 / (dsp.hi - dsp.lo);
     for (let i = 0, j = 0; i < f.px.length; i++, j += 4) {
       let v = (f.px[i] - lo) * sc;
       v = v < 0 ? 0 : v > 255 ? 255 : v;
@@ -1460,7 +1392,6 @@ footer p { margin: 0; }
     g.strokeStyle = '#ffffff'; g.lineWidth = 1.4;
     g.strokeRect(vx * s, vy * s, vs * s, vs * s);
   }
-
   function showResults() {
     const r = st.res, c = st.clip;
     st.reveal = 1;
@@ -1483,21 +1414,6 @@ footer p { margin: 0; }
     const card = [...$('cards').children].find((x) => x.dataset.id === st.cur);
     if (card) { const em = card.querySelector('em'); em.hidden = false; em.textContent = 'Dice ' + r.dice.toFixed(2); }
   }
-
-  // ── #autotest=<id>: an ellipse 1.25x PURsuit's extent, submitted, then Compare ──
-  function autotest(stayOnOutline) {
-    const xs = st.pHull.map((q) => q[0]), ys = st.pHull.map((q) => q[1]);
-    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-    const rx = 0.625 * (Math.max(...xs) - Math.min(...xs)), ry = 0.625 * (Math.max(...ys) - Math.min(...ys));
-    st.outline = Array.from({ length: 72 }, (_, i) => [cx + rx * Math.cos(i * Math.PI / 36), cy + ry * Math.sin(i * Math.PI / 36)]);
-    ui();
-    $('submit').click();
-    st.reveal = 1;
-    if (!stayOnOutline) showTab('compare');
-    console.log('autotest', JSON.stringify({ id: st.cur, dice: st.res.dice, r: st.res.r, nU: st.res.nU, nP: st.res.nP,
-                                             pkU: st.res.pkU, pkP: st.res.pkP, cx, cy, rx, ry }));
-  }
-
   ui();
   start();
 })();
